@@ -1,0 +1,23 @@
+# Byte-compiled / optimized / DLL files
+__pycache__/
+*.py[cod]
+*$py.class
+
+# Virtual environments
+venv/
+env/
+ENV/
+
+# OS files
+.DS_Store
+Thumbs.db
+
+# Encrypted/decrypted output files (generated)
+encrypted_image.bin
+decrypted_image.jpg
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
