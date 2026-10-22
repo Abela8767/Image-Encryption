@@ -1,0 +1,289 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Image Encryption Tool</title>
+  <style>
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; background: #f5f5f5; min-height: 100vh; padding: 2rem; }
+    .container { max-width: 600px; margin: 0 auto; background: white; border-radius: 12px; padding: 2rem; box-shadow: 0 2px 10px rgba(0,0,0,0.1); }
+    h1 { text-align: center; color: #333; margin-bottom: 0.5rem; }
+    .subtitle { text-align: center; color: #666; margin-bottom: 2rem; font-size: 0.95rem; }
+    .tabs { display: flex; margin-bottom: 1.5rem; border-bottom: 2px solid #eee; }
+    .tab { flex: 1; padding: 0.75rem; text-align: center; cursor: pointer; color: #666; font-weight: 500; transition: all 0.2s; border-bottom: 3px solid transparent; margin-bottom: -2px; }
+    .tab.active { color: #2563eb; border-bottom-color: #2563eb; }
+    .tab:hover:not(.active) { color: #333; background: #fafafa; }
+    .panel { display: none; }
+    .panel.active { display: block; animation: fadeIn 0.2s; }
+    @keyframes fadeIn { from { opacity: 0; transform: translateY(4px); } to { opacity: 1; transform: translateY(0); } }
+    .drop-zone { border: 2px dashed #ddd; border-radius: 8px; padding: 2rem; text-align: center; cursor: pointer; transition: all 0.2s; position: relative; }
+    .drop-zone:hover, .drop-zone.dragover { border-color: #2563eb; background: #eff6ff; }
+    .drop-zone input { position: absolute; inset: 0; opacity: 0; cursor: pointer; }
+    .drop-zone-icon { font-size: 2.5rem; margin-bottom: 0.5rem; }
+    .drop-zone-text { color: #666; margin-bottom: 0.25rem; }
+    .drop-zone-hint { font-size: 0.8rem; color: #999; }
+    .file-info { margin-top: 1rem; padding: 0.75rem; background: #f8fafc; border-radius: 6px; display: none; align-items: center; justify-content: space-between; font-size: 0.9rem; }
+    .file-info.visible { display: flex; }
+    .file-info-name { color: #333; max-width: 70%; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+    .file-info-size { color: #666; }
+    .key-group { margin-top: 1.5rem; }
+    .key-group label { display: block; margin-bottom: 0.5rem; font-weight: 500; color: #333; }
+    .key-group input { width: 100%; padding: 0.75rem; border: 1px solid #ddd; border-radius: 6px; font-size: 1rem; font-family: monospace; }
+    .key-group input:focus { outline: none; border-color: #2563eb; box-shadow: 0 0 0 3px rgba(37,99,235,0.1); }
+    .btn { width: 100%; padding: 0.875rem; margin-top: 1.5rem; border: none; border-radius: 6px; font-size: 1rem; font-weight: 600; cursor: pointer; transition: all 0.2s; }
+    .btn-primary { background: #2563eb; color: white; }
+    .btn-primary:hover:not(:disabled) { background: #1d4ed8; }
+    .btn:disabled { opacity: 0.5; cursor: not-allowed; }
+    .status { margin-top: 1rem; padding: 0.75rem; border-radius: 6px; font-size: 0.9rem; display: none; }
+    .status.visible { display: block; }
+    .status.success { background: #ecfdf5; color: #065f46; border: 1px solid #a7f3d0; }
+    .status.error { background: #fef2f2; color: #991b1b; border: 1px solid #fecaca; }
+    .status.info { background: #eff6ff; color: #1e40af; border: 1px solid #bfdbfe; }
+    .footer { text-align: center; margin-top: 2rem; color: #999; font-size: 0.8rem; }
+    .footer a { color: #2563eb; text-decoration: none; }
+    .footer a:hover { text-decoration: underline; }
+    .key-hint { font-size: 0.8rem; color: #999; margin-top: 0.25rem; }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <h1>🔐 Image Encryption Tool</h1>
+    <p class="subtitle">AES-GCM encryption in your browser — no server, no uploads</p>
+
+    <div class="tabs">
+      <button class="tab active" data-tab="encrypt">Encrypt Image</button>
+      <button class="tab" data-tab="decrypt">Decrypt File</button>
+    </div>
+
+    <!-- ENCRYPT PANEL -->
+    <div class="panel active" id="encrypt-panel">
+      <div class="drop-zone" id="encrypt-drop">
+        <input type="file" id="encrypt-file" accept="image/*">
+        <div class="drop-zone-icon">📷</div>
+        <div class="drop-zone-text">Drag & drop an image or click to select</div>
+        <div class="drop-zone-hint">PNG, JPG, WebP, BMP, etc.</div>
+      </div>
+      <div class="file-info" id="encrypt-file-info">
+        <span class="file-info-name" id="encrypt-file-name"></span>
+        <span class="file-info-size" id="encrypt-file-size"></span>
+      </div>
+
+      <div class="key-group">
+        <label for="encrypt-key">Encryption Key</label>
+        <input type="password" id="encrypt-key" placeholder="Enter a strong password" required>
+        <div class="key-hint">Same key required for decryption. Minimum 8 characters recommended.</div>
+      </div>
+
+      <button class="btn btn-primary" id="encrypt-btn" disabled>Encrypt & Download .bin</button>
+      <div class="status" id="encrypt-status"></div>
+    </div>
+
+    <!-- DECRYPT PANEL -->
+    <div class="panel" id="decrypt-panel">
+      <div class="drop-zone" id="decrypt-drop">
+        <input type="file" id="decrypt-file" accept=".bin">
+        <div class="drop-zone-icon">📦</div>
+        <div class="drop-zone-text">Drag & drop a .bin file or click to select</div>
+        <div class="drop-zone-hint">Encrypted file from this tool</div>
+      </div>
+      <div class="file-info" id="decrypt-file-info">
+        <span class="file-info-name" id="decrypt-file-name"></span>
+        <span class="file-info-size" id="decrypt-file-size"></span>
+      </div>
+
+      <div class="key-group">
+        <label for="decrypt-key">Decryption Key</label>
+        <input type="password" id="decrypt-key" placeholder="Enter the encryption key" required>
+      </div>
+
+      <button class="btn btn-primary" id="decrypt-btn" disabled>Decrypt & Download Image</button>
+      <div class="status" id="decrypt-status"></div>
+    </div>
+
+    <div class="footer">
+      Built with <a href="https://developer.mozilla.org/en-US/docs/Web/API/Web_Crypto_API" target="_blank">Web Crypto API</a> |
+      <a href="https://github.com/Abela8767/Image-Encryption" target="_blank">Source on GitHub</a>
+    </div>
+  </div>
+
+  <script>
+    // Tab switching
+    document.querySelectorAll('.tab').forEach(tab => {
+      tab.addEventListener('click', () => {
+        document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
+        document.querySelectorAll('.panel').forEach(p => p.classList.remove('active'));
+        tab.classList.add('active');
+        document.getElementById(tab.dataset.tab + '-panel').classList.add('active');
+      });
+    });
+
+    // Drop zone handling
+    function setupDropZone(dropZoneId, fileInputId, fileInfoId, fileNameId, fileSizeId, btnId) {
+      const dropZone = document.getElementById(dropZoneId);
+      const fileInput = document.getElementById(fileInputId);
+      const fileInfo = document.getElementById(fileInfoId);
+      const fileName = document.getElementById(fileNameId);
+      const fileSize = document.getElementById(fileSizeId);
+      const btn = document.getElementById(btnId);
+
+      ['dragenter', 'dragover', 'dragleave', 'drop'].forEach(evt => {
+        dropZone.addEventListener(evt, e => { e.preventDefault(); e.stopPropagation(); });
+      });
+      ['dragenter', 'dragover'].forEach(evt => {
+        dropZone.addEventListener(evt, () => dropZone.classList.add('dragover'));
+      });
+      ['dragleave', 'drop'].forEach(evt => {
+        dropZone.addEventListener(evt, () => dropZone.classList.remove('dragover'));
+      });
+
+      dropZone.addEventListener('drop', e => {
+        const file = e.dataTransfer.files[0];
+        if (file) handleFile(file);
+      });
+      fileInput.addEventListener('change', e => {
+        if (e.target.files[0]) handleFile(e.target.files[0]);
+      });
+
+      function handleFile(file) {
+        fileName.textContent = file.name;
+        fileSize.textContent = formatBytes(file.size);
+        fileInfo.classList.add('visible');
+        btn.disabled = false;
+        dropZone.querySelector('.drop-zone-text').textContent = 'File selected: ' + file.name;
+        dropZone.dataset.file = file.name;
+        dropZone.fileObj = file;
+      }
+
+      function formatBytes(bytes) {
+        if (bytes < 1024) return bytes + ' B';
+        if (bytes < 1024 * 1024) return (bytes / 1024).toFixed(1) + ' KB';
+        return (bytes / (1024 * 1024)).toFixed(1) + ' MB';
+      }
+
+      return { getFile: () => dropZone.fileObj };
+    }
+
+    const encryptUI = setupDropZone('encrypt-drop', 'encrypt-file', 'encrypt-file-info', 'encrypt-file-name', 'encrypt-file-size', 'encrypt-btn');
+    const decryptUI = setupDropZone('decrypt-drop', 'decrypt-file', 'decrypt-file-info', 'decrypt-file-name', 'decrypt-file-size', 'decrypt-btn');
+
+    // Crypto helpers
+    async function deriveKey(password, salt) {
+      const enc = new TextEncoder();
+      const keyMaterial = await crypto.subtle.importKey('raw', enc.encode(password), 'PBKDF2', false, ['deriveKey']);
+      return crypto.subtle.deriveKey(
+        { name: 'PBKDF2', salt, iterations: 100000, hash: 'SHA-256' },
+        keyMaterial,
+        { name: 'AES-GCM', length: 256 },
+        false,
+        ['encrypt', 'decrypt']
+      );
+    }
+
+    function showStatus(id, message, type) {
+      const el = document.getElementById(id);
+      el.textContent = message;
+      el.className = 'status visible ' + type;
+    }
+
+    // ENCRYPT
+    document.getElementById('encrypt-btn').addEventListener('click', async () => {
+      const file = encryptUI.getFile();
+      const password = document.getElementById('encrypt-key').value;
+      if (!file || !password) return;
+
+      const btn = document.getElementById('encrypt-btn');
+      btn.disabled = true;
+      btn.textContent = 'Encrypting...';
+      showStatus('encrypt-status', 'Encrypting...', 'info');
+
+      try {
+        const data = await file.arrayBuffer();
+        const salt = crypto.getRandomValues(new Uint8Array(16));
+        const iv = crypto.getRandomValues(new Uint8Array(12));
+        const key = await deriveKey(password, salt);
+
+        const encrypted = await crypto.subtle.encrypt(
+          { name: 'AES-GCM', iv },
+          key,
+          data
+        );
+
+        // Format: salt (16) + iv (12) + ciphertext
+        const result = new Uint8Array(salt.length + iv.length + encrypted.byteLength);
+        result.set(salt, 0);
+        result.set(iv, salt.length);
+        result.set(new Uint8Array(encrypted), salt.length + iv.length);
+
+        const blob = new Blob([result], { type: 'application/octet-stream' });
+        const url = URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        a.href = url;
+        a.download = file.name.replace(/\.[^.]+$/, '') + '_encrypted.bin';
+        a.click();
+        URL.revokeObjectURL(url);
+
+        showStatus('encrypt-status', 'Success! File downloaded as ' + a.download, 'success');
+      } catch (e) {
+        showStatus('encrypt-status', 'Encryption failed: ' + e.message, 'error');
+      } finally {
+        btn.disabled = false;
+        btn.textContent = 'Encrypt & Download .bin';
+      }
+    });
+
+    // DECRYPT
+    document.getElementById('decrypt-btn').addEventListener('click', async () => {
+      const file = decryptUI.getFile();
+      const password = document.getElementById('decrypt-key').value;
+      if (!file || !password) return;
+
+      const btn = document.getElementById('decrypt-btn');
+      btn.disabled = true;
+      btn.textContent = 'Decrypting...';
+      showStatus('decrypt-status', 'Decrypting...', 'info');
+
+      try {
+        const data = await file.arrayBuffer();
+        const bytes = new Uint8Array(data);
+
+        if (bytes.length < 28) throw new Error('Invalid file format');
+
+        const salt = bytes.slice(0, 16);
+        const iv = bytes.slice(16, 28);
+        const ciphertext = bytes.slice(28);
+
+        const key = await deriveKey(password, salt);
+
+        const decrypted = await crypto.subtle.decrypt(
+          { name: 'AES-GCM', iv },
+          key,
+          ciphertext
+        );
+
+        // Detect image type from magic bytes
+        const decryptedBytes = new Uint8Array(decrypted);
+        let mime = 'image/png', ext = 'png';
+        if (decryptedBytes[0] === 0xFF && decryptedBytes[1] === 0xD8) { mime = 'image/jpeg'; ext = 'jpg'; }
+        else if (decryptedBytes[0] === 0x89 && decryptedBytes[1] === 0x50) { mime = 'image/png'; ext = 'png'; }
+        else if (decryptedBytes[0] === 0x52 && decryptedBytes[1] === 0x49) { mime = 'image/webp'; ext = 'webp'; }
+
+        const blob = new Blob([decrypted], { type: mime });
+        const url = URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        a.href = url;
+        a.download = file.name.replace(/\.bin$/i, '') + '_decrypted.' + ext;
+        a.click();
+        URL.revokeObjectURL(url);
+
+        showStatus('decrypt-status', 'Success! File downloaded as ' + a.download, 'success');
+      } catch (e) {
+        showStatus('decrypt-status', 'Decryption failed: ' + (e.message || 'Wrong key or corrupted file'), 'error');
+      } finally {
+        btn.disabled = false;
+        btn.textContent = 'Decrypt & Download Image';
+      }
+    });
+  </script>
+</body>
+</html>
