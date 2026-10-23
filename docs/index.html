@@ -153,6 +153,32 @@
     .footer a { color: #2563eb; text-decoration: none; font-weight: 500; }
     .footer a:hover { text-decoration: underline; }
     .footer .divider { margin: 0 0.5rem; color: #cbd5e1; }
+
+    /* Feedback button & modal */
+    .feedback-btn {
+      position: fixed; bottom: 1.5rem; right: 1.5rem; z-index: 100;
+      width: 56px; height: 56px; border-radius: 50%;
+      background: linear-gradient(135deg, #2563eb, #7c3aed);
+      color: white; border: none; font-size: 1.5rem; cursor: pointer;
+      box-shadow: 0 4px 20px rgba(37, 99, 235, 0.4);
+      transition: transform 0.2s, box-shadow 0.2s;
+      display: flex; align-items: center; justify-content: center;
+    }
+    .feedback-btn:hover { transform: scale(1.05); box-shadow: 0 6px 28px rgba(37, 99, 235, 0.5); }
+
+    .modal { position: fixed; inset: 0; z-index: 200; display: none; align-items: center; justify-content: center; padding: 1rem; background: rgba(15, 23, 42, 0.5); backdrop-filter: blur(4px); }
+    .modal.visible { display: flex; animation: fadeIn 0.2s; }
+    .modal-content { background: white; border-radius: 16px; padding: 1.5rem; width: 100%; max-width: 420px; box-shadow: 0 20px 60px rgba(0,0,0,0.2); position: relative; }
+    .modal-close { position: absolute; top: 0.75rem; right: 0.75rem; background: none; border: none; font-size: 1.5rem; color: #94a3b8; cursor: pointer; line-height: 1; }
+    .modal-close:hover { color: #334155; }
+    .form-group { margin-bottom: 1rem; }
+    .form-group label { display: block; margin-bottom: 0.375rem; font-weight: 500; color: #334155; font-size: 0.875rem; }
+    .form-group input, .form-group textarea { width: 100%; padding: 0.75rem; border: 1.5px solid #e2e8f0; border-radius: 8px; font-size: 0.95rem; font-family: inherit; transition: border-color 0.2s, box-shadow 0.2s; }
+    .form-group input:focus, .form-group textarea:focus { outline: none; border-color: #2563eb; box-shadow: 0 0 0 4px rgba(37, 99, 235, 0.12); }
+    .toast { margin-top: 1rem; padding: 0.75rem; border-radius: 8px; font-size: 0.875rem; display: none; text-align: center; }
+    .toast.visible { display: block; animation: slideIn 0.2s; }
+    .toast.success { background: #ecfdf5; color: #065f46; border: 1px solid #a7f3d0; }
+    .toast.error { background: #fef2f2; color: #991b1b; border: 1px solid #fecaca; }
   </style>
 </head>
 <body>
@@ -233,6 +259,34 @@
       Built with <a href="https://developer.mozilla.org/en-US/docs/Web/API/Web_Crypto_API" target="_blank">Web Crypto API</a>
       <span class="divider">|</span>
       <a href="https://github.com/Abela8767/Image-Encryption" target="_blank">Source on GitHub</a>
+    </div>
+  </div>
+
+  <!-- Feedback Button -->
+  <button id="feedback-btn" class="feedback-btn" aria-label="Send feedback">💬</button>
+
+  <!-- Feedback Modal -->
+  <div id="feedback-modal" class="modal" role="dialog" aria-modal="true" aria-labelledby="feedback-title">
+    <div class="modal-content">
+      <button class="modal-close" id="feedback-close" aria-label="Close">&times;</button>
+      <h3 id="feedback-title">Feedback</h3>
+      <form id="feedback-form" action="https://formspree.io/f/xgaawbro" method="POST">
+        <input type="hidden" name="_next" value="https://abela8767.github.io/Image-Encryption/?feedback=sent">
+        <div class="form-group">
+          <label for="feedback-name">Name (optional)</label>
+          <input type="text" id="feedback-name" name="name" placeholder="Your name">
+        </div>
+        <div class="form-group">
+          <label for="feedback-email">Email (optional)</label>
+          <input type="email" id="feedback-email" name="email" placeholder="your@email.com">
+        </div>
+        <div class="form-group">
+          <label for="feedback-message">Message</label>
+          <textarea id="feedback-message" name="message" rows="4" required placeholder="Bug report, feature request, or just say hi..."></textarea>
+        </div>
+        <button type="submit" class="btn btn-primary">Send Feedback</button>
+      </form>
+      <p id="feedback-toast" class="toast"></p>
     </div>
   </div>
 
@@ -413,6 +467,46 @@
       } finally {
         btn.disabled = false;
         btn.textContent = 'Decrypt & Download Image';
+      }
+    });
+
+    // Feedback modal
+    const feedbackBtn = document.getElementById('feedback-btn');
+    const feedbackModal = document.getElementById('feedback-modal');
+    const feedbackClose = document.getElementById('feedback-close');
+    const feedbackForm = document.getElementById('feedback-form');
+    const feedbackToast = document.getElementById('feedback-toast');
+
+    feedbackBtn.addEventListener('click', () => feedbackModal.classList.add('visible'));
+    feedbackClose.addEventListener('click', () => feedbackModal.classList.remove('visible'));
+    feedbackModal.addEventListener('click', e => { if (e.target === feedbackModal) feedbackModal.classList.remove('visible'); });
+
+    feedbackForm.addEventListener('submit', async e => {
+      e.preventDefault();
+      const submitBtn = feedbackForm.querySelector('button[type="submit"]');
+      submitBtn.disabled = true;
+      submitBtn.textContent = 'Sending...';
+
+      try {
+        const res = await fetch(feedbackForm.action, {
+          method: 'POST',
+          body: new FormData(feedbackForm),
+          headers: { 'Accept': 'application/json' }
+        });
+        if (res.ok) {
+          feedbackToast.textContent = 'Thanks! Your feedback has been sent.';
+          feedbackToast.className = 'toast visible success';
+          feedbackForm.reset();
+          setTimeout(() => feedbackModal.classList.remove('visible'), 1500);
+        } else {
+          throw new Error('Form submission failed');
+        }
+      } catch (err) {
+        feedbackToast.textContent = 'Failed to send. Try again or email directly.';
+        feedbackToast.className = 'toast visible error';
+      } finally {
+        submitBtn.disabled = false;
+        submitBtn.textContent = 'Send Feedback';
       }
     });
   </script>
