@@ -4,6 +4,14 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Image Encryption Tool</title>
+  <!-- Google tag (gtag.js) -->
+  <script async src="https://www.googletagmanager.com/gtag/js?id=G-THL64M7M3S"></script>
+  <script>
+    window.dataLayer = window.dataLayer || [];
+    function gtag(){dataLayer.push(arguments);}
+    gtag('js', new Date());
+    gtag('config', 'G-THL64M7M3S');
+  </script>
   <style>
     * { box-sizing: border-box; margin: 0; padding: 0; }
     body {
@@ -345,6 +353,7 @@
         URL.revokeObjectURL(url);
 
         showStatus('encrypt-status', 'Success! File downloaded as ' + a.download, 'success');
+        gtag('event', 'encrypt_complete', { method: 'web' });
       } catch (e) {
         showStatus('encrypt-status', 'Encryption failed: ' + e.message, 'error');
       } finally {
@@ -398,6 +407,7 @@
         URL.revokeObjectURL(url);
 
         showStatus('decrypt-status', 'Success! File downloaded as ' + a.download, 'success');
+        gtag('event', 'decrypt_complete', { method: 'web' });
       } catch (e) {
         showStatus('decrypt-status', 'Decryption failed: ' + (e.message || 'Wrong key or corrupted file'), 'error');
       } finally {
